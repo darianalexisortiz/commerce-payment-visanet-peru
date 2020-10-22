@@ -1,0 +1,9 @@
+name = Payment Method VisaNet Peru
+description = Provides a Commerce Payment method for VisaNet Peru - Verified by Visa.
+package = Commerce (contrib)
+dependencies[] = commerce
+dependencies[] = commerce_payment
+core = 7.x
+
+; Base module file
+files[] = commerce_vistanet_peru

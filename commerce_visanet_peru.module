@@ -1,0 +1,439 @@
+<?php
+
+
+/**
+ * @file
+ * Defines the payment system and checkout integration.
+ */
+
+    // Desarrollo Visa
+    define('VISA_DEV_MERCHANT_ID', '522591303');
+    define('VISA_DEV_USER', 'integraciones.visanet@necomplus.com');
+    define('VISA_DEV_PWD', 'd5e7nk$M');
+    define('VISA_DEV_URL_SECURITY', 'https://apitestenv.vnforapps.com/api.security/v1/security');
+    define('VISA_DEV_URL_SESSION', 'https://apitestenv.vnforapps.com/api.ecommerce/v2/ecommerce/token/session/'.VISA_DEV_MERCHANT_ID);
+    define('VISA_DEV_URL_JS', 'https://static-content-qas.vnforapps.com/v2/js/checkout.js?qa=true');
+    define('VISA_DEV_URL_AUTHORIZATION', 'https://apitestenv.vnforapps.com/api.authorization/v3/authorization/ecommerce/'.VISA_DEV_MERCHANT_ID);
+
+    // Producción Visa
+    define('VISA_PRD_MERCHANT_ID', '527127703');
+    define('VISA_PRD_USER', 'integraciones.visanet@necomplus.com');
+    define('VISA_PRD_PWD', 'd5e7nk$M');
+    define('VISA_PRD_URL_SECURITY', 'https://apiprod.vnforapps.com/api.security/v1/security');
+    define('VISA_PRD_URL_SESSION', 'https://apiprod.vnforapps.com/api.ecommerce/v2/ecommerce/token/session/'.VISA_PRD_MERCHANT_ID);
+    define('VISA_PRD_URL_JS', 'https://static-content.vnforapps.com/v2/js/checkout.js');
+    define('VISA_PRD_URL_AUTHORIZATION', 'https://apiprod.vnforapps.com/api.authorization/v3/authorization/ecommerce/'.VISA_PRD_MERCHANT_ID);
+
+    // Configuración visa
+    define('VISA_MERCHANT_ID', variable_get('VISA_DEVELOPMENT') ? VISA_PRD_MERCHANT_ID : VISA_DEV_MERCHANT_ID);
+    define('VISA_USER', variable_get('VISA_DEVELOPMENT') ? VISA_PRD_USER : VISA_DEV_USER);
+    define('VISA_PWD', variable_get('VISA_DEVELOPMENT') ? VISA_PRD_PWD : VISA_DEV_PWD);
+    define('VISA_URL_SECURITY', variable_get('VISA_DEVELOPMENT') ? VISA_PRD_URL_SECURITY : VISA_DEV_URL_SECURITY);
+    define('VISA_URL_SESSION', variable_get('VISA_DEVELOPMENT') ? VISA_PRD_URL_SESSION : VISA_DEV_URL_SESSION);
+    define('VISA_URL_JS', variable_get('VISA_DEVELOPMENT') ? VISA_PRD_URL_JS : VISA_DEV_URL_JS);
+    define('VISA_URL_AUTHORIZATION', variable_get('VISA_DEVELOPMENT') ? VISA_PRD_URL_AUTHORIZATION : VISA_DEV_URL_AUTHORIZATION);
+
+/**
+ * Implements hook_commerce_payment_method_info().
+ */
+function commerce_visanet_peru_commerce_payment_method_info() {
+  $payment_methods = array();
+
+  $payment_methods['commerce_visanet_peru'] = array(
+    'title'                => t('VisaNet Peru'),
+    'short_title'          => t('VISA'),
+    'display_title'        => t('VISA'),
+    'description'          => t('Provide payments using VisaNet Peru.'),
+    'active' => TRUE,
+    'terminal'             => FALSE,
+    'offsite'              => TRUE,
+    'offsite_autoredirect' => FALSE,
+  );
+
+  return $payment_methods;
+}
+
+/**
+ * Payment method callback: settings_form.
+ */
+function commerce_visanet_peru_settings_form($settings = NULL) {
+  $form = array();
+
+  // Merge default settings into the stored settings array.
+  $settings = (array) $settings + array(
+    'enviroment_test_access' => array(
+      'merchantid' => isset(['enviroment_test_access']['merchantid']) ? ['enviroment_test_access']['merchantid'] : VISA_DEV_MERCHANT_ID,
+      'user' => isset(['enviroment_test_access']['user']) ? ['enviroment_test_access']['user'] : VISA_DEV_USER,
+      'pass' => isset(['enviroment_test_access']['pass']) ? ['enviroment_test_access']['pass'] : VISA_DEV_PWD,
+    ),
+  );
+
+  $form['enviroment_dev'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Production'),
+      '#description' => t('Activate to production environment'),
+      '#default_value' => $settings['enviroment_dev'],
+    );
+
+  $form['enviroment_dev_access']['merchantid'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Merchant ID Test'),
+      '#size' => 40,
+      '#maxlength' => 32,
+      '#default_value' => $settings['enviroment_test_access']['merchantid'],
+      '#required' => TRUE,
+      '#states' => array(
+        'visible' => array(
+          ':input[name$="[enviroment_dev]"]' => array('checked' => FALSE),
+        ),
+      ),
+  );
+  $form['enviroment_dev_access']['user'] = array(
+    '#type' => 'textfield',
+    '#title' => t('User (email) Test'),
+    '#size' => 40,
+    '#maxlength' => 255,
+    '#default_value' => $settings['enviroment_test_access']['user'],
+    '#required' => TRUE,
+    '#states' => array(
+      'visible' => array(
+        ':input[name$="[enviroment_dev]"]' => array('checked' => FALSE),
+      ),
+    ),
+  );
+  $form['enviroment_dev_access']['pass'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Password Test'),
+    '#size' => 40,
+    '#maxlength' => 255,
+    '#default_value' => $settings['enviroment_test_access']['pass'],
+    '#required' => TRUE,
+    '#states' => array(
+      'visible' => array(
+        ':input[name$="[enviroment_dev]"]' => array('checked' => FALSE),
+      ),
+    ),
+  );
+  $form['enviroment_prd_access']['merchantid'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Merchant ID'),
+    '#size' => 40,
+    '#maxlength' => 255,
+    '#default_value' => $settings['enviroment_prd_access']['merchantid'],
+    '#required' => TRUE,
+    '#states' => array(
+      'visible' => array(
+        ':input[name$="[enviroment_dev]"]' => array('checked' => TRUE),
+      ),
+    ),
+  ) ;
+  $form['enviroment_prd_access']['user'] = array(
+    '#type' => 'textfield',
+    '#title' => t('User (email)'),
+    '#size' => 40,
+    '#maxlength' => 255,
+    '#default_value' => $settings['enviroment_prd_access']['user'],
+    '#required' => TRUE,
+    '#states' => array(
+      'visible' => array(
+        ':input[name$="[enviroment_dev]"]' => array('checked' => TRUE),
+      ),
+    ),
+  );
+  $form['enviroment_prd_access']['pass'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Password'),
+    '#size' => 40,
+    '#maxlength' => 255,
+    '#default_value' => $settings['enviroment_prd_access']['pass'],
+    '#required' => TRUE,
+    '#states' => array(
+      'visible' => array(
+        ':input[name$="[enviroment_dev]"]' => array('checked' => TRUE),
+      ),
+    ),
+  );
+
+  $form['terms_link'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Terms and conditions'),
+    '#default_value' => (isset($settings['terms_link'])? $settings['terms_link'] : ''),
+    '#description' => t('The URL of your terms and conditions, example /terms-use.'),
+    '#required' => TRUE,
+  );
+
+  return $form;
+
+}
+function commerce_visanet_peru_settings_form_submit($form_state){
+   variable_set('VISA_DEVELOPMENT', $form_state['parameter']['payment_method']['settings']['payment_method']['settings']['enviroment_dev']['#value']);
+  }
+/**
+ * Payment method callback: submit form.
+ */
+function commerce_visanet_peru_submit_form($payment_method, $pane_values, $checkout_pane, $order) {
+  $form = array();
+  // Merge in values from the order.
+  if (!empty($order->data['commerce_visanet_peru'])) {
+    $pane_values += $order->data['commerce_visanet_peru'];
+  }
+
+  // Merge in default values.
+  $pane_values += array(
+    'accept_terms' => '',
+  );
+  $visanet_terms_link = $payment_method['settings']['terms_link'];
+  $form['accept_terms'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('I accept the <a href="@url" target="_blank">terms and conditions</a>.', array('@url' => url($visanet_terms_link))),
+    '#description' => t('Please check the box to accept terms and conditions.'),
+    '#default_value' => $pane_values['accept_terms'],
+  );
+
+  return $form;
+}
+
+/**
+ * Payment method callback: submit form validation.
+ */
+function commerce_visanet_peru_submit_form_validate($payment_method, $pane_form, $pane_values, $order, $form_parents = array()) {
+
+  // Require the checkbox.
+  if (empty($pane_values['accept_terms'])) {
+    form_set_error(implode('][', array_merge($form_parents, array('accept_terms'))), t('You must accept terms and conditions to follow.'));
+    return FALSE;
+  }
+
+}
+
+function commerce_visanet_peru_redirect_form($form, &$form_state, $order, $payment_method) {
+
+  $currency_code = $order->commerce_order_total['und']['0']['currency_code'];
+  $amount = number_format(commerce_currency_amount_to_decimal($order->commerce_order_total['und']['0']['amount'], $currency_code), 2, '.', '');
+
+  if(isset($_POST["transactionToken"])){
+    $transactionToken = $_POST["transactionToken"];
+    $token = commerce_visanet_peru_generateToken();
+    $data = commerce_visanet_peru_generateAuthorization($amount, $order->order_id, $transactionToken, $token);
+    $payment_method['payment_data'] = $data;
+
+    if(isset($payment_method['payment_data']->dataMap)){
+      commerce_visanet_peru_transaction($payment_method, $order, $amount);
+      commerce_payment_redirect_pane_next_page($order);
+      drupal_set_message($payment_method['payment_data']->dataMap->ACTION_DESCRIPTION, 'status');
+      drupal_goto(commerce_checkout_order_uri($order));
+    } else {
+      commerce_visanet_peru_transaction($payment_method, $order, $amount);
+      commerce_payment_redirect_pane_previous_page($order, $payment_method['payment_data']->data->ACTION_DESCRIPTION);
+      drupal_set_message($payment_method['payment_data']->data->ACTION_DESCRIPTION, 'warning');
+      drupal_goto(commerce_checkout_order_uri($order));
+    }
+  } else {
+
+  $form['#prefix'] = '<div class="payment-redirect-form">';
+  $form['#suffix'] = '</div>';
+  $form['frmvisanet'] = array(
+    '#type' => 'html_tag',
+    '#tag' => 'script',
+    '#value' => '',
+    '#attributes' => array(
+      'src' => VISA_URL_JS,
+      'type' => 'text/javascript',
+      'data-sessiontoken' => commerce_visanet_peru_generateSesion($amount, commerce_visanet_peru_generateToken()),
+      'data-channel' => 'web',
+      'data-merchantid' => VISA_MERCHANT_ID,
+      'data-merchantlogo' => theme_get_setting('logo'),
+      'data-purchasenumber' => $order->order_id,
+      'data-amount' => $amount,
+      'data-currency' => $currency_code,
+      'data-expirationminutes' => 5,
+      'data-timeouturl' => url('checkout/' . $order->order_id . '/review', array('absolute' => TRUE))
+    ),
+  );
+  $form['frmvisanet']['#attached']['js'][] = drupal_get_path('module', 'commerce_visanet_peru') . '/commerce_visanet_peru.js';
+  $form['help']['#markup'] = '<div class="checkout-help">' . t('Please wait while you are redirected to the payment server. If nothing happens within 10 seconds') . '</div>';
+  $form['cancel'] = array(
+    '#type' => 'submit',
+    '#value' => t('Cancel'),
+    '#submit' => array('commerce_visanet_peru_form_cancel_submit'),
+    '#limit_validation_errors' => array(),
+  );
+  return $form;
+  }
+}
+
+
+/**
+ * Special submit handler for the cancel button to avoid processing orders.
+ */
+function commerce_visanet_peru_form_cancel_submit($form, &$form_state) {
+  $order = commerce_order_load($form_state['order']->order_id);
+  commerce_payment_redirect_pane_previous_page($order, t('Payment canceled'));
+  return drupal_goto(commerce_checkout_order_uri($order));
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function commerce_visanet_peru_form_alter(&$form, &$form_state, $form_id) {
+
+  if ($form_id == 'rules_ui_edit_element') {
+    $form['#submit'][] = 'commerce_visanet_peru_settings_form_submit';
+  }
+
+  if ($form_id == 'commerce_checkout_form_review') {
+    if (!empty($form['commerce_payment']['payment_method']['#options'])) {
+      // Loop over its options array looking for a PayPal WPS option.
+      foreach ($form['commerce_payment']['payment_method']['#options'] as $key => &$value) {
+        list($method_id, $rule_name) = explode('|', $key);
+        // If we find PayPal WPS...
+        if ($method_id == 'commerce_visanet_peru') {
+          // Prepare the replacement radio button text with icons.
+          $icon = array(
+            'path' => drupal_get_path('module', 'commerce_visanet_peru') . '/images/visa.gif',
+            'title' => 'VisaNetPeru',
+            'alt' => 'VisaNetPeru',
+            'attributes' => array(
+              'class' => array('commerce-visanetperu-icon'),
+            ),
+          );
+
+          $rule = rules_config_load('commerce_payment_commerce_visanet_peru');
+          $action = $rule->actions()->current();
+          $link_edit = url(sprintf('admin/commerce/config/payment-methods/manage/%s/edit/%d', $rule->name, $action->elementId()), array('absolute' => TRUE));
+          $sandbox = (!variable_get('VISA_DEVELOPMENT'))? t(': Sandbox - used for testing, switch to production in !settings', array('!settings' => '<a href="'. $link_edit . '">'. t('settings') .'</a>')) : '';
+          $value = t('!logo VisaNet Peru' . $sandbox, array('!logo' =>  theme('image', $icon)));
+          break;
+        }
+      }
+    }
+
+  }
+  if ($form_id == 'commerce_visanet_peru_redirect_form') {
+    $form['#theme_wrappers'] = array();
+    $form['#theme'] = array('commerce_visanet_peru');
+  }
+}
+
+/**
+ * Implements hook_theme() form.
+ */
+function commerce_visanet_peru_theme($existing, $type, $theme, $path){
+  return array(
+    'commerce_visanet_peru' => array(
+      'render element' => 'form',
+      'template' => 'commerce_visanet_peru',
+      'path' => $path . '/templates',
+    ),
+  );
+}
+
+/**
+ * Creates an example payment transaction for the specified charge amount.
+ *
+ * @param $payment_method
+ *   The payment method instance object used to charge this payment.
+ * @param $order
+ *   The order object the payment applies to.
+ */
+function commerce_visanet_peru_transaction($payment_method, $order) {
+  dpm($payment_method['payment_data']);
+  if(isset($payment_method['payment_data']->data)){
+    $eci_code = $payment_method['payment_data']->data->ECI;
+    $eci_desc = (isset($payment_method['payment_data']->data->ECI_DESCRIPTION))? $payment_method['payment_data']->data->ECI_DESCRIPTION : '(' . $payment_method['payment_data']->errorCode . ') ' . $payment_method['payment_data']->errorMessage;
+    $act_desc = $payment_method['payment_data']->data->ACTION_DESCRIPTION;
+    $status = COMMERCE_PAYMENT_STATUS_FAILURE;
+  } else {
+    $eci_code = $payment_method['payment_data']->dataMap->ECI;
+    $eci_desc = $payment_method['payment_data']->dataMap->ECI_DESCRIPTION;
+    $act_desc = $payment_method['payment_data']->dataMap->ACTION_DESCRIPTION;
+    $status = COMMERCE_PAYMENT_STATUS_SUCCESS;
+  }
+
+  $transaction = commerce_payment_transaction_new('commerce_visanet_peru', $order->order_id);
+  $transaction->instance_id = $payment_method['instance_id'];
+  $transaction->amount =  $order->commerce_order_total['und']['0']['amount'];
+  $transaction->currency_code = $order->commerce_order_total['und']['0']['currency_code'];
+  $transaction->remote_id = $eci_code;
+  $transaction->remote_status = $eci_desc;
+  $transaction->status = $status;
+  $transaction->message = '@name' . $act_desc;
+  $transaction->message_variables = array('@name' => 'Checkout by Visanet Peru: ');
+
+  commerce_payment_transaction_save($transaction);
+}
+
+function commerce_visanet_peru_generateToken() {
+  $curl = curl_init();
+  curl_setopt_array($curl, array(
+      CURLOPT_URL => VISA_URL_SECURITY,
+      CURLOPT_RETURNTRANSFER => true,
+      CURLOPT_ENCODING => "",
+      CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+      CURLOPT_CUSTOMREQUEST => "POST",
+      CURLOPT_HTTPHEADER => array(
+      "Accept: */*",
+      'Authorization: '.'Basic '.base64_encode(VISA_USER.":".VISA_PWD)
+      ),
+  ));
+  $response = curl_exec($curl);
+  curl_close($curl);
+  return $response;
+}
+
+function commerce_visanet_peru_generateSesion($amount, $token) {
+  $session = array(
+      'amount' => $amount,
+      'antifraud' => array(
+          'clientIp' => $_SERVER['REMOTE_ADDR'],
+  /*         'merchantDefineData' => array(
+              'MDD4' => "mail@domain.com",
+              'MDD33' => "DNI",
+              'MDD34' => '87654321'
+          ), */
+      ),
+      'channel' => 'web',
+  );
+  $json = json_encode($session);
+  $response = json_decode(commerce_visanet_peru_postRequest(VISA_URL_SESSION, $json, $token));
+  return $response->sessionKey;
+}
+
+function commerce_visanet_peru_generateAuthorization($amount, $purchaseNumber, $transactionToken, $token) {
+  $data = array(
+      'antifraud' => null,
+      'captureType' => 'manual',
+      'channel' => 'web',
+      'countable' => true,
+      'order' => array(
+          'amount' => $amount,
+          'currency' => 'PEN',
+          'purchaseNumber' => $purchaseNumber,
+          'tokenId' => $transactionToken
+      ),
+      'recurrence' => null,
+      'sponsored' => null
+  );
+  $json = json_encode($data);
+  $session = json_decode(commerce_visanet_peru_postRequest(VISA_URL_AUTHORIZATION, $json, $token));
+  return $session;
+}
+
+function commerce_visanet_peru_postRequest($url, $postData, $token) {
+  $curl = curl_init();
+  curl_setopt_array($curl, array(
+      CURLOPT_URL => $url,
+      CURLOPT_RETURNTRANSFER => true,
+      CURLOPT_ENCODING => "",
+      CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+      CURLOPT_CUSTOMREQUEST => "POST",
+      CURLOPT_HTTPHEADER => array(
+          'Authorization: '.$token,
+          'Content-Type: application/json'
+      ),
+      CURLOPT_POSTFIELDS => $postData
+  ));
+  $response = curl_exec($curl);
+  curl_close($curl);
+  return $response;
+}
