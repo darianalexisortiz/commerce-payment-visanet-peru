@@ -81,9 +81,11 @@ function commerce_visanet_peru_settings_form($settings = NULL) {
       '#size' => 40,
       '#maxlength' => 32,
       '#default_value' => $settings['enviroment_test_access']['merchantid'],
-      '#required' => TRUE,
       '#states' => array(
         'visible' => array(
+          ':input[name$="[enviroment_dev]"]' => array('checked' => FALSE),
+        ),
+        'required' => array(
           ':input[name$="[enviroment_dev]"]' => array('checked' => FALSE),
         ),
       ),
@@ -94,9 +96,11 @@ function commerce_visanet_peru_settings_form($settings = NULL) {
     '#size' => 40,
     '#maxlength' => 255,
     '#default_value' => $settings['enviroment_test_access']['user'],
-    '#required' => TRUE,
     '#states' => array(
       'visible' => array(
+        ':input[name$="[enviroment_dev]"]' => array('checked' => FALSE),
+      ),
+      'required' => array(
         ':input[name$="[enviroment_dev]"]' => array('checked' => FALSE),
       ),
     ),
@@ -107,9 +111,11 @@ function commerce_visanet_peru_settings_form($settings = NULL) {
     '#size' => 40,
     '#maxlength' => 255,
     '#default_value' => $settings['enviroment_test_access']['pass'],
-    '#required' => TRUE,
     '#states' => array(
       'visible' => array(
+        ':input[name$="[enviroment_dev]"]' => array('checked' => FALSE),
+      ),
+      'required' => array(
         ':input[name$="[enviroment_dev]"]' => array('checked' => FALSE),
       ),
     ),
@@ -120,9 +126,11 @@ function commerce_visanet_peru_settings_form($settings = NULL) {
     '#size' => 40,
     '#maxlength' => 255,
     '#default_value' => $settings['enviroment_prd_access']['merchantid'],
-    '#required' => TRUE,
     '#states' => array(
       'visible' => array(
+        ':input[name$="[enviroment_dev]"]' => array('checked' => TRUE),
+      ),
+      'required' => array(
         ':input[name$="[enviroment_dev]"]' => array('checked' => TRUE),
       ),
     ),
@@ -133,9 +141,11 @@ function commerce_visanet_peru_settings_form($settings = NULL) {
     '#size' => 40,
     '#maxlength' => 255,
     '#default_value' => $settings['enviroment_prd_access']['user'],
-    '#required' => TRUE,
     '#states' => array(
       'visible' => array(
+        ':input[name$="[enviroment_dev]"]' => array('checked' => TRUE),
+      ),
+      'required' => array(
         ':input[name$="[enviroment_dev]"]' => array('checked' => TRUE),
       ),
     ),
@@ -146,9 +156,11 @@ function commerce_visanet_peru_settings_form($settings = NULL) {
     '#size' => 40,
     '#maxlength' => 255,
     '#default_value' => $settings['enviroment_prd_access']['pass'],
-    '#required' => TRUE,
     '#states' => array(
       'visible' => array(
+        ':input[name$="[enviroment_dev]"]' => array('checked' => TRUE),
+      ),
+      'required' => array(
         ':input[name$="[enviroment_dev]"]' => array('checked' => TRUE),
       ),
     ),
