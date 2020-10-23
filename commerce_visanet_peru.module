@@ -61,10 +61,16 @@ function commerce_visanet_peru_settings_form($settings = NULL) {
 
   // Merge default settings into the stored settings array.
   $settings = (array) $settings + array(
+    'enviroment_dev' => ['enviroment_dev'] ? FALSE : TRUE,
     'enviroment_test_access' => array(
-      'merchantid' => isset(['enviroment_test_access']['merchantid']) ? ['enviroment_test_access']['merchantid'] : VISA_DEV_MERCHANT_ID,
-      'user' => isset(['enviroment_test_access']['user']) ? ['enviroment_test_access']['user'] : VISA_DEV_USER,
-      'pass' => isset(['enviroment_test_access']['pass']) ? ['enviroment_test_access']['pass'] : VISA_DEV_PWD,
+      'merchantid' => (isset(['enviroment_test_access']['merchantid'])) ? ['enviroment_test_access']['merchantid'] : VISA_DEV_MERCHANT_ID,
+      'user' => (isset(['enviroment_test_access']['user'])) ? ['enviroment_test_access']['user'] : VISA_DEV_USER,
+      'pass' => (isset(['enviroment_test_access']['pass'])) ? ['enviroment_test_access']['pass'] : VISA_DEV_PWD,
+    ),
+    'enviroment_prd_access' => array(
+      'merchantid' => (isset(['enviroment_prd_access']['merchantid'])) ? ['enviroment_test_access']['merchantid'] : '',
+      'user' => (isset(['enviroment_prd_access']['user'])) ? ['enviroment_prd_access']['user'] : '',
+      'pass' => (isset(['enviroment_prd_access']['pass'])) ? ['enviroment_prd_access']['pass'] : '',
     ),
   );
 
@@ -194,13 +200,20 @@ function commerce_visanet_peru_submit_form($payment_method, $pane_values, $check
   $pane_values += array(
     'accept_terms' => '',
   );
-  $visanet_terms_link = $payment_method['settings']['terms_link'];
+  $visanet_terms_link = (isset($payment_method['settings']['terms_link'])) ? $payment_method['settings']['terms_link'] : '';
+  if($visanet_terms_link){
   $form['accept_terms'] = array(
     '#type' => 'checkbox',
     '#title' => t('I accept the <a href="@url" target="_blank">terms and conditions</a>.', array('@url' => url($visanet_terms_link))),
     '#description' => t('Please check the box to accept terms and conditions.'),
     '#default_value' => $pane_values['accept_terms'],
   );
+  } else {
+    $rule = rules_config_load('commerce_payment_commerce_visanet_peru');
+    $action = $rule->actions()->current();
+    $link_edit = url(sprintf('admin/commerce/config/payment-methods/manage/%s/edit/%d', $rule->name, $action->elementId()), array('absolute' => TRUE));
+    $form['accept_terms']['#markup'] = t('Terms and conditions not available, you must create and add in !settings', array('!settings' => '<a href="'. $link_edit . '">'. t('settings') .'</a>'));
+  }
 
   return $form;
 }
@@ -263,7 +276,7 @@ function commerce_visanet_peru_redirect_form($form, &$form_state, $order, $payme
     ),
   );
   $form['frmvisanet']['#attached']['js'][] = drupal_get_path('module', 'commerce_visanet_peru') . '/commerce_visanet_peru.js';
-  $form['help']['#markup'] = '<div class="checkout-help">' . t('Please wait while you are redirected to the payment server. If nothing happens within 10 seconds') . '</div>';
+  $form['help']['#markup'] = '<div class="checkout-help">' . t('Please wait while you are redirected to the payment server. If nothing happens within 10 seconds, reload the page') . '</div>';
   $form['cancel'] = array(
     '#type' => 'submit',
     '#value' => t('Cancel'),
@@ -408,7 +421,11 @@ function commerce_visanet_peru_generateSesion($amount, $token) {
   );
   $json = json_encode($session);
   $response = json_decode(commerce_visanet_peru_postRequest(VISA_URL_SESSION, $json, $token));
-  return $response->sessionKey;
+  if(isset($response->sessionKey)){
+   return $response->sessionKey;
+  } else {
+   return drupal_set_message(t('The VisaNet credentials are incorrect, you must change the details.'), 'warning');
+  }
 }
 
 function commerce_visanet_peru_generateAuthorization($amount, $purchaseNumber, $transactionToken, $token) {
